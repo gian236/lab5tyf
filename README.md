@@ -1,36 +1,79 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Lab 05 · Billetera Lightning con WDK
 
-## Getting Started
+Aplicación Next.js + TypeScript para crear, consultar y pagar facturas Lightning reales con `@tetherto/wdk-wallet-spark`. La billetera vive exclusivamente en el servidor y reutiliza una instancia singleton mientras la función de Node.js permanece activa.
 
-First, run the development server:
+## Requisitos
+
+- Node.js 20 o superior
+- Una mnemonic BIP-39 propia
+- Fondos en la red Spark seleccionada para realizar pagos
+
+## Instalación
+
+```bash
+npm install
+Copy-Item .env.example .env.local
+```
+
+Configura `.env.local`:
+
+```dotenv
+WDK_MNEMONIC="tu mnemonic BIP-39"
+WDK_NETWORK=REGTEST
+```
+
+No uses `NEXT_PUBLIC_` para la mnemonic. Todos los archivos `.env*`, salvo `.env.example`, están ignorados por Git.
+
+Inicia el proyecto:
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Abre [http://localhost:3000](http://localhost:3000). Para verificar la versión de producción:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+npm run lint
+npm run build
+npm start
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## API
 
-## Learn More
+### `POST /api/invoice`
 
-To learn more about Next.js, take a look at the following resources:
+```json
+{ "amountSats": 1000, "memo": "Prueba Lab 05" }
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Devuelve `invoiceId`, `bolt11`, `status`, `rawStatus` y `amountSats`. `status` se normaliza a `pending`, `settled`, `failed` o `expired`; `rawStatus` conserva el estado exacto de WDK.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### `GET /api/check/{invoiceId}`
 
-## Deploy on Vercel
+Consulta la factura real en WDK. Devuelve `404` si no existe.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### `POST /api/pay`
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```json
+{ "bolt11": "ln..." }
+```
+
+WDK estima primero la comisión, usa esa estimación como límite explícito y ejecuta el pago. Devuelve el `requestId`, estado y comisión.
+
+### `GET /api/info`
+
+Devuelve únicamente datos públicos: `nodeId`/`identityKey`, dirección Spark y red.
+
+### `GET /api/balance`
+
+Devuelve `{ "balanceSats": number }`.
+
+## Persistencia y seguridad
+
+`src/lib/wallet.ts` almacena una promesa de inicialización en `globalThis`. Así, las solicitudes concurrentes y posteriores de una instancia caliente reutilizan el mismo `WalletManagerSpark` y la misma cuenta. En un cold start de Vercel se reconstruye la instancia en memoria, pero la misma mnemonic deriva la misma billetera lógica; nunca se genera una mnemonic nueva.
+
+La mnemonic solo se lee desde `process.env.WDK_MNEMONIC`, no se envía al cliente ni se imprime. En Vercel debe guardarse como variable de entorno cifrada. El valor predeterminado de `WDK_NETWORK` es `REGTEST`.
+
+> Compatibilidad: WDK Spark `1.0.0-beta.25` usa Spark SDK `0.10.0`, que solo incluye endpoints públicos para `REGTEST` (Flashnet) y `MAINNET`. Aunque el tipo del SDK enumera `TESTNET`, esa opción cae en la configuración `LOCAL` y trata de conectarse a `localhost`; por eso no se usa para el deploy del laboratorio.
+
+Consulta [DEPLOY.md](./DEPLOY.md) para publicar y documentar las pruebas cruzadas obligatorias.
