@@ -2,7 +2,7 @@
 
 ## Datos públicos
 
-- URL de Vercel: `<PENDIENTE: https://...vercel.app>`
+- URL de Vercel: `https://lab5tyf.vercel.app`
 - Network: `REGTEST` (Flashnet)
 - Node ID / identity key: `02df6b6a378cc938ca0a9e8a89488591d146e8f3e21fddb9b7ae87858ba7bed80e`
 - Dirección Spark: `sparkrt1pgss9hmtdgmcejfceg9faz5ffzzer52xare7y87ahxm6apu93wnmakqw898mud`
