@@ -47,6 +47,7 @@
 .boltBox code { overflow: hidden; color: #b4bac4; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
 .copyButton { position: absolute; top: 50%; right: 9px; transform: translateY(-50%); padding: 7px 9px; font-size: 10px; }
 .copyButton:hover { transform: translateY(calc(-50% - 1px)); }
+.copyError { margin: -7px 0 0; color: #ff9fa8; font-size: 11px; line-height: 1.4; }
 .rawStatus { color: #656c77; font: 10px ui-monospace, monospace; }
 .paymentResult { padding: 18px; border: 1px solid #2d333b; border-radius: 12px; background: #101216; }
 .paymentResult > div { display: grid; gap: 5px; min-width: 0; }

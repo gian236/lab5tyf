@@ -34,6 +34,37 @@ async function responseJson<T>(response: Response): Promise<T> {
   return data;
 }
 
+async function copyText(text: string): Promise<void> {
+  if (navigator.clipboard?.writeText) {
+    try {
+      await navigator.clipboard.writeText(text);
+      return;
+    } catch {
+      // Some browsers reject the Clipboard API even on HTTPS; use the
+      // selection-based fallback while the click still has user activation.
+    }
+  }
+
+  const textarea = document.createElement("textarea");
+  textarea.value = text;
+  textarea.readOnly = true;
+  textarea.style.position = "fixed";
+  textarea.style.left = "-9999px";
+  textarea.style.opacity = "0";
+  document.body.appendChild(textarea);
+  textarea.focus();
+  textarea.select();
+  textarea.setSelectionRange(0, text.length);
+
+  try {
+    if (!document.execCommand("copy")) {
+      throw new Error("El navegador rechazó la copia");
+    }
+  } finally {
+    textarea.remove();
+  }
+}
+
 export default function Home() {
   const [walletInfo, setWalletInfo] = useState<WalletInfo | null>(null);
   const [balance, setBalance] = useState<number | null>(null);
@@ -48,6 +79,7 @@ export default function Home() {
   const [paymentError, setPaymentError] = useState("");
   const [paying, setPaying] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [copyError, setCopyError] = useState("");
   const activeInvoiceId = invoice?.invoiceId;
   const activeInvoiceStatus = invoice?.status;
 
@@ -113,6 +145,8 @@ export default function Home() {
     event.preventDefault();
     setCreating(true);
     setInvoiceError("");
+    setCopyError("");
+    setCopied(false);
     setInvoice(null);
 
     try {
@@ -158,9 +192,16 @@ export default function Home() {
 
   async function copyInvoice() {
     if (!invoice) return;
-    await navigator.clipboard.writeText(invoice.bolt11);
-    setCopied(true);
-    window.setTimeout(() => setCopied(false), 1600);
+    setCopyError("");
+
+    try {
+      await copyText(invoice.bolt11);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1600);
+    } catch {
+      setCopied(false);
+      setCopyError("No se pudo copiar automáticamente; selecciona el BOLT11 manualmente.");
+    }
   }
 
   return (
@@ -227,6 +268,7 @@ export default function Home() {
                 <code>{invoice.bolt11}</code>
                 <button type="button" className={styles.copyButton} onClick={copyInvoice}>{copied ? "Copiado" : "Copiar"}</button>
               </div>
+              {copyError && <p className={styles.copyError} role="alert">{copyError}</p>}
               <small className={styles.rawStatus}>WDK: {invoice.rawStatus}</small>
             </div>
           )}
